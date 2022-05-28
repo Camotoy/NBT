@@ -3,13 +3,12 @@ package com.nukkitx.nbt;
 import java.io.Closeable;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.util.Map;
 import java.util.Objects;
 
 import static com.nukkitx.nbt.NbtType.byClass;
 import static com.nukkitx.nbt.NbtUtils.MAX_DEPTH;
 
-public class NBTOutputStream implements Closeable {
+public class NBTOutputStream implements NbtWriter, Closeable {
     private final DataOutput output;
     private boolean closed = false;
 
@@ -29,10 +28,31 @@ public class NBTOutputStream implements Closeable {
 
         NbtType<?> type = byClass(tag.getClass());
 
-        output.writeByte(type.getId());
-        output.writeUTF("");
+        writeTag("", type, tag, maxDepth);
+    }
 
-        this.serialize(tag, type, maxDepth);
+    @Override
+    public void writeTag(String name, NbtType<?> type, Object value, int maxDepth) throws IOException {
+        Objects.requireNonNull(value, "value");
+        if (closed) {
+            throw new IllegalStateException("closed");
+        }
+
+        writeTypeAndName(type, name);
+
+        this.serialize(value, type, maxDepth);
+    }
+
+    @Override
+    public void writeValue(String name, Object value, int maxDepth) throws IOException {
+        Objects.requireNonNull(value, "tag");
+        if (closed) {
+            throw new IllegalStateException("closed");
+        }
+
+        NbtType<?> type = byClass(value.getClass());
+        writeTypeAndName(type, name);
+        this.serialize(value, type, maxDepth);
     }
 
     public void writeValue(Object tag) throws IOException {
@@ -47,6 +67,47 @@ public class NBTOutputStream implements Closeable {
 
         NbtType<?> type = byClass(tag.getClass());
         this.serialize(tag, type, maxDepth);
+    }
+
+    @Override
+    public void writeByte(String name, byte b) throws IOException {
+        writeTypeAndName(NbtType.BYTE, name);
+        output.writeByte(b);
+    }
+
+    @Override
+    public void writeShort(String name, short s) throws IOException {
+        writeTypeAndName(NbtType.SHORT, name);
+        output.writeShort(s);
+    }
+
+    @Override
+    public void writeInt(String name, int i) throws IOException {
+        writeTypeAndName(NbtType.INT, name);
+        output.writeInt(i);
+    }
+
+    @Override
+    public void writeLong(String name, long l) throws IOException {
+        writeTypeAndName(NbtType.LONG, name);
+        output.writeLong(l);
+    }
+
+    @Override
+    public void writeFloat(String name, float f) throws IOException {
+        writeTypeAndName(NbtType.FLOAT, name);
+        output.writeFloat(f);
+    }
+
+    @Override
+    public void writeDouble(String name, double d) throws IOException {
+        writeTypeAndName(NbtType.DOUBLE, name);
+        output.writeDouble(d);
+    }
+
+    private void writeTypeAndName(NbtType<?> type, String name) throws IOException {
+        output.writeByte(type.getId());
+        output.writeUTF(Objects.requireNonNull(name));
     }
 
     private void serialize(Object tag, NbtType<?> type, int maxDepth) throws IOException {
@@ -100,16 +161,9 @@ public class NBTOutputStream implements Closeable {
                 }
                 break;
             case COMPOUND:
-                NbtMap map = (NbtMap) tag;
+                NbtLike map = (NbtLike) tag;
+                map.serializeToNbt(this);
 
-                for (Map.Entry<String, Object> entry : map.entrySet()) {
-                    NbtType<?> entryType = byClass(entry.getValue().getClass());
-
-                    output.writeByte(entryType.getId());
-                    output.writeUTF(entry.getKey());
-
-                    this.serialize(entry.getValue(), entryType, maxDepth - 1);
-                }
                 output.writeByte(0); // End tag
                 break;
             case INT_ARRAY:

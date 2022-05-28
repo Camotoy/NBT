@@ -51,6 +51,10 @@ public final class NbtType<T> {
     public static <T> NbtType<T> byClass(Class<T> tagClass) {
         NbtType<T> type = (NbtType<T>) BY_CLASS.get(tagClass);
         if (type == null) {
+            if (NbtLike.class.isAssignableFrom(tagClass)) {
+                return (NbtType<T>) COMPOUND;
+            }
+
             throw new IllegalArgumentException("Tag of class " + tagClass + " does not exist");
         }
         return type;

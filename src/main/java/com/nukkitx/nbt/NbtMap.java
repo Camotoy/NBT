@@ -6,6 +6,7 @@ import com.nukkitx.nbt.util.function.*;
 import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
 import javax.annotation.concurrent.Immutable;
+import java.io.IOException;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
@@ -14,7 +15,7 @@ import java.util.function.LongConsumer;
 
 @Immutable
 @ParametersAreNonnullByDefault
-public class NbtMap extends AbstractMap<String, Object> {
+public class NbtMap extends AbstractMap<String, Object> implements NbtLike {
     public static final NbtMap EMPTY = new NbtMap();
 
     private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
@@ -418,5 +419,10 @@ public class NbtMap extends AbstractMap<String, Object> {
         }
     }
 
-
+    @Override
+    public void serializeToNbt(NbtWriter writer, int depth) throws IOException {
+        for (Map.Entry<String, Object> entry : entrySet()) {
+            writer.writeValue(entry.getKey(), entry.getValue(), depth - 1);
+        }
+    }
 }
